@@ -17,14 +17,18 @@ import matplotlib.pyplot as plt
 # from sklearn.cluster import KMeans
 # import time
 
+from concurrent.futures import ThreadPoolExecutor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+import joblib
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Set page configuration
-st.set_page_config(layout="wide", page_title="Urban Planning Map Tool - Pakistan")
-
+st.set_page_config(layout="wide", page_title="SmartTown: Urban Planning Tool - Pakistan")
 
 # Securely store API key
 OPENTOPOGRAPHY_API_KEY = os.getenv("OPENTOPOGRAPHY_API_KEY")
@@ -372,31 +376,59 @@ def create_3d_visualization(elevation_data):
     
     # Display the 3D visualization
     st.plotly_chart(fig)
-# New function to evaluate land suitability
-def evaluate_land_suitability(nasa_data, elevation_data):
-    suitability_score = np.zeros_like(elevation_data)
+
+def evaluate_land_suitability(nasa_data, elevation_data, weights=None, ideal_values=None):
+    if not isinstance(nasa_data, pd.DataFrame) or not isinstance(elevation_data, np.ndarray):
+        raise TypeError("nasa_data must be a pandas DataFrame and elevation_data must be a numpy array")
     
-    # Temperature suitability (prefer moderate temperatures)
-    temp_suitability = 1 - abs(nasa_data['T2M'].mean() - 20) / 20
+    required_columns = ['T2M', 'PRECTOTCORR', 'ALLSKY_SFC_SW_DWN']
+    if not all(col in nasa_data.columns for col in required_columns):
+        raise ValueError(f"nasa_data must contain columns: {', '.join(required_columns)}")
     
-    # Precipitation suitability (prefer moderate rainfall)
-    precip_suitability = 1 - abs(nasa_data['PRECTOTCORR'].mean() - 2) / 2
+    if weights is None:
+        weights = {'temp': 0.3, 'precip': 0.35, 'solar': 0.2, 'slope': 0.15}
     
-    # Slope suitability (prefer gentler slopes)
-    slope = np.gradient(elevation_data)[0]
-    slope_suitability = 1 / (1 + np.exp(slope - 15))  # Logistic function
+    if ideal_values is None:
+        ideal_values = {'temp': 30, 'precip': 1.5, 'solar': 300, 'slope': 30}
     
-    # Combine suitability factors
-    for i in range(elevation_data.shape[0]):
-        for j in range(elevation_data.shape[1]):
-            suitability_score[i, j] = (
-                temp_suitability * 0.3 +
-                precip_suitability * 0.3 +
-                slope_suitability[i, j] * 0.4
-            )
+    temp_suitability = 1 - np.abs(nasa_data['T2M'].mean() - ideal_values['temp']) / 30
+    
+    precip_suitability = 1 - np.abs(nasa_data['PRECTOTCORR'].mean() - ideal_values['precip']) / 1.5
+    
+    solar_suitability = np.minimum(nasa_data['ALLSKY_SFC_SW_DWN'].mean() / ideal_values['solar'], 1)
+    
+    dy, dx = np.gradient(elevation_data)
+    slope = np.degrees(np.arctan(np.sqrt(dx*dx + dy*dy)))
+    slope_suitability = 1 / (1 + np.exp((slope - ideal_values['slope']) / 10))
+    
+    suitability_score = (
+        temp_suitability * weights['temp'] +
+        precip_suitability * weights['precip'] +
+        solar_suitability * weights['solar'] +
+        slope_suitability * weights['slope']
+    )
     
     return suitability_score
 
+def train_land_suitability_model(nasa_data, elevation_data, suitability_scores):
+    X = np.column_stack([
+        nasa_data['T2M'].values,
+        nasa_data['PRECTOTCORR'].values,
+        nasa_data['ALLSKY_SFC_SW_DWN'].values,
+        elevation_data.flatten()
+    ])
+    y = suitability_scores.flatten()
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    model = RandomForestRegressor(n_estimators=100, random_state=42)
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    st.write(f"Model Mean Squared Error: {mse}")
+
+    return model
 
 def main():
     st.title("SmartTown: Optimal Land Selection for Urban Planning")
@@ -465,10 +497,13 @@ def main():
                 progress_bar = st.progress(0)
                 
                 with st.spinner("Fetching and analyzing data..."):
-                    nasa_data = get_nasa_power_data(lat, lon, start_date, end_date, selected_params)
-                    elevation_data = get_opentopography_data(south, north, west, east)
+                    with ThreadPoolExecutor() as executor:
+                        nasa_future = executor.submit(get_nasa_power_data, lat, lon, start_date, end_date, selected_params)
+                        elevation_future = executor.submit(get_opentopography_data, south, north, west, east)
+
+                        nasa_data = nasa_future.result()
+                        elevation_data = elevation_future.result()
                     
-                    # Save data to session state
                     st.session_state.nasa_data = nasa_data
                     st.session_state.elevation_data = elevation_data
                     
@@ -479,7 +514,6 @@ def main():
                 else:
                     st.error("Failed to fetch or process data. Please try again.")
 
-    # Create tabs outside of the button press condition
     if 'nasa_data' in st.session_state and 'elevation_data' in st.session_state:
         tabs = st.tabs(["Climate Analysis", "Topography Analysis", "Land Suitability", "Urban Planning Recommendations"])
         
@@ -495,7 +529,37 @@ def main():
         with tabs[2]:
             st.session_state.active_tab = "Land Suitability"
             st.subheader("Land Suitability Analysis")
-            suitability_score = evaluate_land_suitability(st.session_state.nasa_data, st.session_state.elevation_data)
+            
+            # Allow user to customize weights and ideal values
+            st.subheader("Customize Land Suitability Parameters")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write("Weights (must sum to 1)")
+                weight_temp = st.slider("Temperature Weight", 0.0, 1.0, 0.3, 0.05)
+                weight_precip = st.slider("Precipitation Weight", 0.0, 1.0, 0.35, 0.05)
+                weight_solar = st.slider("Solar Radiation Weight", 0.0, 1.0, 0.2, 0.05)
+                weight_slope = st.slider("Slope Weight", 0.0, 1.0, 0.15, 0.05)
+            with col2:
+                st.write("Ideal Values")
+                ideal_temp = st.slider("Ideal Temperature (°C)", 0, 40, 30)
+                ideal_precip = st.slider("Ideal Precipitation (mm/day)", 0.0, 10.0, 1.5, 0.1)
+                ideal_solar = st.slider("Ideal Solar Radiation (W/m^2)", 0, 500, 300, 10)
+                ideal_slope = st.slider("Ideal Slope (%)", 0, 45, 30)
+
+            weights = {
+                'temp': weight_temp,
+                'precip': weight_precip,
+                'solar': weight_solar,
+                'slope': weight_slope
+            }
+            ideal_values = {
+                'temp': ideal_temp,
+                'precip': ideal_precip,
+                'solar': ideal_solar,
+                'slope': ideal_slope
+            }
+
+            suitability_score = evaluate_land_suitability(st.session_state.nasa_data, st.session_state.elevation_data, weights, ideal_values)
             fig = go.Figure(data=go.Heatmap(z=suitability_score, colorscale='RdYlGn'))
             fig.update_layout(title='Land Suitability Heatmap', height=600, width=800)
             st.plotly_chart(fig)
@@ -507,13 +571,20 @@ def main():
                 
             avg_suitability = np.mean(suitability_score)
             st.metric("Average Land Suitability Score", f"{avg_suitability:.2f}/1.00")
+
+            # Train and save the machine learning model
+            if st.button("Train Land Suitability Model"):
+                model = train_land_suitability_model(st.session_state.nasa_data, st.session_state.elevation_data, suitability_score)
+                joblib.dump(model, 'land_suitability_model.joblib')
+                st.success("Land suitability model trained and saved successfully!")
         
         with tabs[3]:
             st.session_state.active_tab = "Urban Planning Recommendations"
             generate_urban_planning_recommendations(st.session_state.nasa_data, st.session_state.elevation_data)
         
         st.subheader("Export Data")
-        export_data()  # Call the modified export_data function
+        export_data()
+
     else:
         st.info("Please draw a polygon or rectangle on the map and click 'Analyze Selected Area' to see the results.")
 
