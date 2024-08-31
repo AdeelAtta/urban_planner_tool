@@ -1,7 +1,7 @@
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
-from folium.plugins import Draw, MarkerCluster
+from folium.plugins import Draw
 import requests
 import pandas as pd
 import numpy as np
@@ -27,7 +27,7 @@ st.set_page_config(layout="wide", page_title="Urban Planning Map Tool - Pakistan
 
 
 # Securely store API key
-OPENTOPOGRAPHY_API_KEY = os.getenv("API_KEY")
+OPENTOPOGRAPHY_API_KEY = os.getenv("OPENTOPOGRAPHY_API_KEY")
 
 # Define all available parameters
 ALL_PARAMETERS = {
@@ -319,27 +319,34 @@ def calculate_sustainability_score(nasa_data, elevation_data):
 
     return (climate_score + topography_score) * 10
 
-def export_data(nasa_data, elevation_data):
-    nasa_csv = nasa_data.to_csv(index=False).encode('utf-8')
-    elevation_csv = pd.DataFrame(elevation_data).to_csv(index=False).encode('utf-8')
+def export_data():
+    # Check if data is stored in session_state
+    if 'nasa_data' in st.session_state and 'elevation_data' in st.session_state:
+        nasa_data = st.session_state['nasa_data']
+        elevation_data = st.session_state['elevation_data']
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.download_button(
-            label="Download Climate Data CSV",
-            data=nasa_csv,
-            file_name="climate_data.csv",
-            mime="text/csv",
-            key="climate_data"
-        )
-    with col2:
-        st.download_button(
-            label="Download Elevation Data CSV",
-            data=elevation_csv,
-            file_name="elevation_data.csv",
-            mime="text/csv",
-            key="elevation_data"
-        )
+        # Convert data to CSV format
+        nasa_csv = nasa_data.to_csv(index=False).encode('utf-8')
+        elevation_csv = pd.DataFrame(elevation_data).to_csv(index=False).encode('utf-8')
+
+        # Create download buttons for the data
+        col1, col2 = st.columns(2)
+        with col1:
+            st.download_button(
+                label="Download Climate Data CSV",
+                data=nasa_csv,
+                file_name="climate_data.csv",
+                mime="text/csv"
+            )
+        with col2:
+            st.download_button(
+                label="Download Elevation Data CSV",
+                data=elevation_csv,
+                file_name="elevation_data.csv",
+                mime="text/csv"
+            )
+    else:
+        st.warning("No data available for download yet. Please fetch the data first.")
 
 def create_3d_visualization(elevation_data):
     st.subheader("3D Topography Visualization")
@@ -365,9 +372,34 @@ def create_3d_visualization(elevation_data):
     
     # Display the 3D visualization
     st.plotly_chart(fig)
+# New function to evaluate land suitability
+def evaluate_land_suitability(nasa_data, elevation_data):
+    suitability_score = np.zeros_like(elevation_data)
+    
+    # Temperature suitability (prefer moderate temperatures)
+    temp_suitability = 1 - abs(nasa_data['T2M'].mean() - 20) / 20
+    
+    # Precipitation suitability (prefer moderate rainfall)
+    precip_suitability = 1 - abs(nasa_data['PRECTOTCORR'].mean() - 2) / 2
+    
+    # Slope suitability (prefer gentler slopes)
+    slope = np.gradient(elevation_data)[0]
+    slope_suitability = 1 / (1 + np.exp(slope - 15))  # Logistic function
+    
+    # Combine suitability factors
+    for i in range(elevation_data.shape[0]):
+        for j in range(elevation_data.shape[1]):
+            suitability_score[i, j] = (
+                temp_suitability * 0.3 +
+                precip_suitability * 0.3 +
+                slope_suitability[i, j] * 0.4
+            )
+    
+    return suitability_score
+
 
 def main():
-    st.title("Urban Planning Map Tool - Pakistan")
+    st.title("SmartTown: Optimal Land Selection for Urban Planning")
 
     st.sidebar.header("Settings")
     col1, col2 = st.sidebar.columns(2)
@@ -388,20 +420,19 @@ def main():
         format_func=lambda x: ALL_PARAMETERS[x]
     )
 
-
     with st.expander("Instructions", expanded=False):
         st.write("1. Use the sidebar to select date range and climate parameters.")
         st.write("2. Draw a polygon or rectangle on the map to select your area of interest.")
         st.write("3. Click 'Analyze Selected Area' to fetch and analyze data.")
-        st.write("4. Explore the generated visualizations and recommendations.")
-    
+        st.write("4. Explore the generated visualizations, recommendations, and land suitability analysis.")
+
     if not selected_params:
         st.warning("Please select at least one climate parameter.")
         return
 
     st.subheader("Select Area of Interest")
 
-    default_location = [30.3753, 69.3451]  # Center of Pakistan
+    default_location = [33.6844, 73.0479]  # Coordinates for Islamabad
     m = folium.Map(location=default_location, zoom_start=12)
 
     draw = Draw(
@@ -416,10 +447,8 @@ def main():
         edit_options={'edit': False}
     )
     draw.add_to(m)
-    
 
     map_data = st_folium(m, width="100%", height=400)
-
 
     if map_data and 'all_drawings' in map_data and map_data['all_drawings'] and len(map_data['all_drawings']) > 0:
         geometry = map_data['all_drawings'][-1]['geometry']
@@ -437,40 +466,56 @@ def main():
                 
                 with st.spinner("Fetching and analyzing data..."):
                     nasa_data = get_nasa_power_data(lat, lon, start_date, end_date, selected_params)
-                    progress_bar.progress(50)
-                    
                     elevation_data = get_opentopography_data(south, north, west, east)
+                    
+                    # Save data to session state
+                    st.session_state.nasa_data = nasa_data
+                    st.session_state.elevation_data = elevation_data
+                    
                     progress_bar.progress(100)
 
                 if nasa_data is not None and elevation_data is not None:
                     st.success("Data fetched and analyzed successfully!")
-                    
-                    tab1, tab2, tab3= st.tabs(["Climate Analysis", "Topography Analysis", "Urban Planning Recommendations"])
-                    
-                    with tab1:
-                        create_climate_visualizations(nasa_data)
-                    
-                    with tab2:
-                        create_3d_visualization(elevation_data)
-                        
-                        st.write("Area Sustainability Score")
-                        sustainability_score = calculate_sustainability_score(nasa_data, elevation_data)
-                        st.metric("Sustainability Score", f"{sustainability_score:.2f}/10")
-                        
-                        st.subheader("Export Data")
-                        export_data(nasa_data, elevation_data)
-                        
-                        analyze_topography(elevation_data)
-
-                    
-                    with tab3:
-                        generate_urban_planning_recommendations(nasa_data, elevation_data)
-
                 else:
                     st.error("Failed to fetch or process data. Please try again.")
-            
+
+    # Create tabs outside of the button press condition
+    if 'nasa_data' in st.session_state and 'elevation_data' in st.session_state:
+        tabs = st.tabs(["Climate Analysis", "Topography Analysis", "Land Suitability", "Urban Planning Recommendations"])
+        
+        with tabs[0]:
+            st.session_state.active_tab = "Climate Analysis"
+            create_climate_visualizations(st.session_state.nasa_data)
+
+        with tabs[1]:
+            st.session_state.active_tab = "Topography Analysis"
+            create_3d_visualization(st.session_state.elevation_data)
+            analyze_topography(st.session_state.elevation_data)
+
+        with tabs[2]:
+            st.session_state.active_tab = "Land Suitability"
+            st.subheader("Land Suitability Analysis")
+            suitability_score = evaluate_land_suitability(st.session_state.nasa_data, st.session_state.elevation_data)
+            fig = go.Figure(data=go.Heatmap(z=suitability_score, colorscale='RdYlGn'))
+            fig.update_layout(title='Land Suitability Heatmap', height=600, width=800)
+            st.plotly_chart(fig)
+                
+            st.write("Suitability Score Legend:")
+            st.write("- Green: More suitable for urban development")
+            st.write("- Yellow: Moderately suitable")
+            st.write("- Red: Less suitable, may require additional considerations")
+                
+            avg_suitability = np.mean(suitability_score)
+            st.metric("Average Land Suitability Score", f"{avg_suitability:.2f}/1.00")
+        
+        with tabs[3]:
+            st.session_state.active_tab = "Urban Planning Recommendations"
+            generate_urban_planning_recommendations(st.session_state.nasa_data, st.session_state.elevation_data)
+        
+        st.subheader("Export Data")
+        export_data()  # Call the modified export_data function
     else:
-        st.info("Please draw a polygon or rectangle on the map to select an area.")
+        st.info("Please draw a polygon or rectangle on the map and click 'Analyze Selected Area' to see the results.")
 
 if __name__ == "__main__":
     main()
