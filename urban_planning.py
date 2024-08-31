@@ -8,14 +8,14 @@ import numpy as np
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import rasterio
+# import rasterio
 from rasterio.io import MemoryFile
-import geopandas as gpd
-from shapely.geometry import Polygon
+# import geopandas as gpd
+# from shapely.geometry import Polygon
 import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.cluster import KMeans
-import time
+# import seaborn as sns
+# from sklearn.cluster import KMeans
+# import time
 
 import os
 from dotenv import load_dotenv
