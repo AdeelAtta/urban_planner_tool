@@ -13,4 +13,4 @@ scikit-learn
 pythreejs
 ipywidgets
 python-dotenv
-
+openai
