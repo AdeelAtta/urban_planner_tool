@@ -8,15 +8,8 @@ import numpy as np
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-# import rasterio
 from rasterio.io import MemoryFile
-# import geopandas as gpd
-# from shapely.geometry import Polygon
 import matplotlib.pyplot as plt
-# import seaborn as sns
-# from sklearn.cluster import KMeans
-# import time
-
 from concurrent.futures import ThreadPoolExecutor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
@@ -24,14 +17,18 @@ from sklearn.metrics import mean_squared_error
 import joblib
 import os
 from dotenv import load_dotenv
+import openai
+from openai import OpenAI
 
 load_dotenv()
 
 # Set page configuration
 st.set_page_config(layout="wide", page_title="SmartTown: Urban Planning Tool - Pakistan")
 
-# Securely store API key
+# Securely store API keys
 OPENTOPOGRAPHY_API_KEY = os.getenv("OPENTOPOGRAPHY_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai.api_key = OPENAI_API_KEY
 
 # Define all available parameters
 ALL_PARAMETERS = {
@@ -193,175 +190,13 @@ def analyze_topography(elevation_data):
     st.write(f"- Moderate (15-30°): {moderate:.2f}%")
     st.write(f"- Steep (>30°): {steep:.2f}%")
 
-def generate_urban_planning_recommendations(nasa_data, elevation_data):
-    st.subheader("Urban Planning Recommendations")
-
-    # Climate-based recommendations
-    avg_temp = nasa_data['T2M'].mean() if 'T2M' in nasa_data.columns else None
-    avg_precip = nasa_data['PRECTOTCORR'].mean() if 'PRECTOTCORR' in nasa_data.columns else None
-    avg_wind = nasa_data['WS2M'].mean() if 'WS2M' in nasa_data.columns else None
-
-    st.write("Climate Considerations:")
-    if avg_temp is not None:
-        if avg_temp > 25:
-            st.write("- Consider heat-resistant building materials and designs")
-            st.write("- Plan for ample green spaces and water features for cooling")
-        elif avg_temp < 10:
-            st.write("- Focus on insulation and heating efficiency in buildings")
-            st.write("- Plan for snow removal and ice management in public spaces")
-
-    if avg_precip is not None:
-        if avg_precip > 5:
-            st.write("- Implement robust drainage systems and flood control measures")
-            st.write("- Use permeable pavements to manage stormwater runoff")
-        elif avg_precip < 1:
-            st.write("- Implement water conservation measures and drought-resistant landscaping")
-            st.write("- Consider rainwater harvesting systems for buildings")
-
-    if avg_wind is not None:
-        if avg_wind > 5:
-            st.write("- Design wind-resistant structures and consider wind barriers")
-            st.write("- Explore potential for wind energy generation")
-    else:
-        st.write("- Wind speed data not available. Consider collecting local wind data for better planning.")
-
-    # Topography-based recommendations
-    avg_elevation = np.mean(elevation_data)
-    avg_slope = np.mean(np.gradient(elevation_data)[0])
-
-    st.write("Topography Considerations:")
-    if avg_slope > 15:
-        st.write("- Implement erosion control measures on steeper slopes")
-        st.write("- Consider terracing for building sites on slopes")
-    else:
-        st.write("- The relatively flat terrain is suitable for most urban development")
-
-    if avg_elevation > 1000:
-        st.write("- Account for altitude effects on air pressure and temperature")
-        st.write("- Ensure infrastructure can handle potential extreme weather at higher elevations")
-
-    st.write("General Recommendations:")
-    st.write("- Conduct detailed environmental impact assessments before major developments")
-    st.write("- Prioritize sustainable and energy-efficient building designs")
-    st.write("- Plan for mixed-use developments to reduce transportation needs")
-    st.write("- Incorporate green infrastructure and nature-based solutions in urban design")
-
-def project_climate_change(nasa_data, years):
-    projection = pd.DataFrame()
-    for column in nasa_data.columns:
-        trend = np.polyfit(range(len(nasa_data)), nasa_data[column], 1)
-        projection[column] = [trend[1] + trend[0] * i for i in range(len(nasa_data), len(nasa_data) + 365 * years)]
-    projection.index = pd.date_range(start=nasa_data.index[-1] + pd.Timedelta(days=1), periods=365 * years, freq='D')
-    return projection
-
-def visualize_climate_projection(nasa_data, initial_years):
-    st.write("Climate Change Projection")
-    years_projection = st.slider("Select years for projection", 10, 50, initial_years)
-    
-    try:
-        if nasa_data.empty:
-            st.error("No climate data available for projection. Please ensure you've selected climate parameters and fetched data.")
-            return
-
-        climate_projection = project_climate_change(nasa_data, years_projection)
-        
-        if climate_projection.empty:
-            st.error("Climate projection calculation resulted in empty data. Please check the input data.")
-            return
-
-        # Create a more informative visualization using Plotly
-        fig = go.Figure()
-        for column in climate_projection.columns:
-            fig.add_trace(go.Scatter(x=climate_projection.index, y=climate_projection[column],
-                                     mode='lines', name=ALL_PARAMETERS.get(column, column)))
-        
-        fig.update_layout(title=f'Climate Projection for {years_projection} Years',
-                          xaxis_title='Year',
-                          yaxis_title='Value',
-                          legend_title='Parameters')
-        
-        st.plotly_chart(fig)
-        
-        st.write("Note: This projection is based on linear trends and should be interpreted cautiously.")
-        
-        # Display summary statistics
-        st.write("Projection Summary Statistics:")
-        st.write(climate_projection.describe())
-        
-    except Exception as e:
-        st.error(f"An error occurred while projecting climate data: {str(e)}")
-        st.write("Please ensure you have selected sufficient historical data for projection.")
-        st.write("Debug information:")
-        st.write(f"NASA data shape: {nasa_data.shape}")
-        st.write(f"NASA data columns: {nasa_data.columns}")
-        st.write(f"Years projection: {years_projection}")
-        
-def analyze_urban_heat_island(nasa_data, elevation_data):
-    uhi_effect = np.zeros_like(elevation_data)
-    avg_temp = nasa_data['T2M'].mean()
-    elevation_range = np.ptp(elevation_data)
-
-    for i in range(elevation_data.shape[0]):
-        for j in range(elevation_data.shape[1]):
-            uhi_effect[i, j] = avg_temp + (elevation_data[i, j] - elevation_data.min()) / elevation_range * 5
-
-    fig = go.Figure(data=go.Heatmap(z=uhi_effect, colorscale='RdYlBu_r'))
-    fig.update_layout(title='Simulated Urban Heat Island Effect', height=600, width=800)
-    return fig
-
-def calculate_sustainability_score(nasa_data, elevation_data):
-    climate_score = (
-        (1 - abs(nasa_data['T2M'].mean() - 20) / 20) * 0.3 +
-        (1 - abs(nasa_data['PRECTOTCORR'].mean() - 2) / 2) * 0.2 +
-        (nasa_data['ALLSKY_SFC_SW_DWN'].mean() / 300) * 0.2
-    )
-
-    topography_score = (
-        (1 - np.mean(np.gradient(elevation_data)[0]) / 45) * 0.2 +
-        (1 - abs(np.mean(elevation_data) - 500) / 500) * 0.1
-    )
-
-    return (climate_score + topography_score) * 10
-
-def export_data():
-    # Check if data is stored in session_state
-    if 'nasa_data' in st.session_state and 'elevation_data' in st.session_state:
-        nasa_data = st.session_state['nasa_data']
-        elevation_data = st.session_state['elevation_data']
-
-        # Convert data to CSV format
-        nasa_csv = nasa_data.to_csv(index=False).encode('utf-8')
-        elevation_csv = pd.DataFrame(elevation_data).to_csv(index=False).encode('utf-8')
-
-        # Create download buttons for the data
-        col1, col2 = st.columns(2)
-        with col1:
-            st.download_button(
-                label="Download Climate Data CSV",
-                data=nasa_csv,
-                file_name="climate_data.csv",
-                mime="text/csv"
-            )
-        with col2:
-            st.download_button(
-                label="Download Elevation Data CSV",
-                data=elevation_csv,
-                file_name="elevation_data.csv",
-                mime="text/csv"
-            )
-    else:
-        st.warning("No data available for download yet. Please fetch the data first.")
-
 def create_3d_visualization(elevation_data):
     st.subheader("3D Topography Visualization")
     
-    # Create a grid of coordinates
     y, x = np.mgrid[0:elevation_data.shape[0], 0:elevation_data.shape[1]]
     
-    # Create the 3D surface plot
     fig = go.Figure(data=[go.Surface(z=elevation_data, x=x, y=y)])
     
-    # Update the layout for better visibility
     fig.update_layout(
         title='3D Topography Visualization',
         scene=dict(
@@ -374,7 +209,6 @@ def create_3d_visualization(elevation_data):
         height=600
     )
     
-    # Display the 3D visualization
     st.plotly_chart(fig)
 
 def evaluate_land_suitability(nasa_data, elevation_data, weights=None, ideal_values=None):
@@ -410,27 +244,48 @@ def evaluate_land_suitability(nasa_data, elevation_data, weights=None, ideal_val
     
     return suitability_score
 
-def train_land_suitability_model(nasa_data, elevation_data, suitability_scores):
-    X = np.column_stack([
-        nasa_data['T2M'].values,
-        nasa_data['PRECTOTCORR'].values,
-        nasa_data['ALLSKY_SFC_SW_DWN'].values,
-        elevation_data.flatten()
-    ])
-    y = suitability_scores.flatten()
+def urban_planning_chatbot(nasa_data, elevation_data, user_input, coordinates):
+    # Prepare a summary of the data for the chatbot
+    avg_temp = nasa_data['T2M'].mean() if 'T2M' in nasa_data.columns else "N/A"
+    avg_precip = nasa_data['PRECTOTCORR'].mean() if 'PRECTOTCORR' in nasa_data.columns else "N/A"
+    avg_solar = nasa_data['ALLSKY_SFC_SW_DWN'].mean() if 'ALLSKY_SFC_SW_DWN' in nasa_data.columns else "N/A"
+    avg_elevation = np.mean(elevation_data)
+    
+    # Calculate centroid of the selected area
+    lat, lon = calculate_centroid(coordinates)
+    
+    # Prepare the conversation context
+    conversation = [
+        {"role": "system", "content": "You are an AI urban planning assistant. You have access to climate and topographical data for a specific area, coordinates are also given.Act like a best Urban planner assistant & Provide insights and recommendations based on this data and urban planning best practices in very easy and to the point answers"},
+        {"role": "user", "content": f"Here's a summary of the area data:\nCoordinates: {coordinates} Lat {lat:.4f}, Lon {lon:.4f}\nAverage Temperature: {avg_temp:.2f}°C\nAverage Precipitation: {avg_precip:.2f} mm/day\nAverage Solar Radiation: {avg_solar:.2f} W/m^2\nAverage Elevation: {avg_elevation:.2f} meters\n\nBased on this data and location, {user_input}"}
+    ]
+    
+    try:
+        client = OpenAI()
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=conversation
+        )
+        ai_message = response.choices[0].message.content
+        
+        return ai_message
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-    mse = mean_squared_error(y_test, y_pred)
-    st.write(f"Model Mean Squared Error: {mse}")
-
-    return model
+def send_message():
+    if st.session_state.user_input:
+        user_message = st.session_state.user_input
+        st.session_state.chat_history.append({"is_user": True, "content": user_message})
+        
+        with st.spinner("AI is thinking..."):
+            ai_response = urban_planning_chatbot(st.session_state.nasa_data, st.session_state.elevation_data, user_message, st.session_state.coordinates)
+        
+        st.session_state.chat_history.append({"is_user": False, "content": ai_response})
+        st.session_state.user_input = ""  # Clear the input box
 
 def main():
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
     st.title("SmartTown: Optimal Land Selection for Urban Planning")
 
     st.sidebar.header("Settings")
@@ -451,12 +306,6 @@ def main():
         default=list(ALL_PARAMETERS.keys())[:7],
         format_func=lambda x: ALL_PARAMETERS[x]
     )
-
-    with st.expander("Instructions", expanded=False):
-        st.write("1. Use the sidebar to select date range and climate parameters.")
-        st.write("2. Draw a polygon or rectangle on the map to select your area of interest.")
-        st.write("3. Click 'Analyze Selected Area' to fetch and analyze data.")
-        st.write("4. Explore the generated visualizations, recommendations, and land suitability analysis.")
 
     if not selected_params:
         st.warning("Please select at least one climate parameter.")
@@ -506,6 +355,7 @@ def main():
                     
                     st.session_state.nasa_data = nasa_data
                     st.session_state.elevation_data = elevation_data
+                    st.session_state.coordinates = coordinates
                     
                     progress_bar.progress(100)
 
@@ -515,19 +365,16 @@ def main():
                     st.error("Failed to fetch or process data. Please try again.")
 
     if 'nasa_data' in st.session_state and 'elevation_data' in st.session_state:
-        tabs = st.tabs(["Climate Analysis", "Topography Analysis", "Land Suitability", "Urban Planning Recommendations"])
+        tab1, tab2, tab3, tab4 = st.tabs(["Climate Analysis", "Topography Analysis", "Land Suitability", "Urban Planning Recommendations"])
         
-        with tabs[0]:
-            st.session_state.active_tab = "Climate Analysis"
+        with tab1:
             create_climate_visualizations(st.session_state.nasa_data)
 
-        with tabs[1]:
-            st.session_state.active_tab = "Topography Analysis"
+        with tab2:
             create_3d_visualization(st.session_state.elevation_data)
             analyze_topography(st.session_state.elevation_data)
 
-        with tabs[2]:
-            st.session_state.active_tab = "Land Suitability"
+        with tab3:
             st.subheader("Land Suitability Analysis")
             
             # Allow user to customize weights and ideal values
@@ -572,19 +419,104 @@ def main():
             avg_suitability = np.mean(suitability_score)
             st.metric("Average Land Suitability Score", f"{avg_suitability:.2f}/1.00")
 
-            # Train and save the machine learning model
-            if st.button("Train Land Suitability Model"):
-                model = train_land_suitability_model(st.session_state.nasa_data, st.session_state.elevation_data, suitability_score)
-                joblib.dump(model, 'land_suitability_model.joblib')
-                st.success("Land suitability model trained and saved successfully!")
-        
-        with tabs[3]:
-            st.session_state.active_tab = "Urban Planning Recommendations"
-            generate_urban_planning_recommendations(st.session_state.nasa_data, st.session_state.elevation_data)
-        
-        st.subheader("Export Data")
-        export_data()
+        with tab4:
+            st.markdown("""
+                <style>
+                .chat-container {
+                    border: 1px solid #e0e0e0;
+                    border-radius: 10px;
+                    padding: 20px;
+                    margin-bottom: 20px;
+                    background-color: #f9f9f9;
+                    max-height: 500px;
+                    overflow-y: auto;
+                }
+                .chat-message {
+                    padding: 15px;
+                    margin-bottom: 15px;
+                    border-radius: 5px;
+                    font-family: 'Arial', sans-serif;
+                    font-size: 14px;
+                    line-height: 1.5;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                }
+                .chat-message.user {
+                    background-color: #e8f5e9;
+                    border-left: 5px solid #4caf50;
+                    margin-left: 20px;
+                }
+                .chat-message.bot {
+                    background-color: #e3f2fd;
+                    border-left: 5px solid #2196f3;
+                    margin-right: 20px;
+                }
+                .chat-message .header {
+                    font-weight: bold;
+                    margin-bottom: 5px;
+                    font-size: 0.9em;
+                    color: #424242;
+                }
+                .chat-message .content {
+                    color: #212121;
+                }
+                .stTextInput > div > div > input {
+                    background-color: #fff;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 5px;
+                    padding: 10px;
+                    font-size: 14px;
+                }
+                .stButton > button {
+                    background-color: #2196f3;
+                    color: white;
+                    font-weight: bold;
+                    border-radius: 5px;
+                    border: none;
+                    padding: 10px 20px;
+                    font-size: 14px;
+                }
+                .stButton > button:hover {
+                    background-color: #1976d2;
+                }
+                </style>
+            """, unsafe_allow_html=True)
 
+            st.header("Urban Planning Assistant")
+            st.markdown("Discuss your urban planning queries and receive expert advice.")
+
+            chat_container = st.container()
+            
+            with chat_container:
+                st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+                for message in st.session_state.chat_history:
+                    if message['is_user']:
+                        st.markdown(f"""
+                            <div class="chat-message user">
+                                <div class="header">Urban Planner</div>
+                                <div class="content">{message['content']}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"""
+                            <div class="chat-message bot">
+                                <div class="header">Planning Assistant</div>
+                                <div class="content">{message['content']}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            with st.form(key='chat_form'):
+                user_input = st.text_input("Enter your urban planning query...", key="user_input")
+                col1, col2, col3 = st.columns([3, 1, 1])
+                with col1:
+                    submit_button = st.form_submit_button(label="Submit Query", on_click=send_message)
+                
+                with col2:
+                    clear_button = st.form_submit_button(label="Clear Chat")
+                    if clear_button:
+                        st.session_state.chat_history = []
+                        
+                                                
     else:
         st.info("Please draw a polygon or rectangle on the map and click 'Analyze Selected Area' to see the results.")
 
