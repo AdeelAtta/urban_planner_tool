@@ -446,7 +446,7 @@ def main():
     selected_params = st.sidebar.multiselect(
         "Select climate parameters",
         list(ALL_PARAMETERS.keys()),
-        default=list(ALL_PARAMETERS.keys())[:7],
+        default=list(ALL_PARAMETERS.keys())[:],
         format_func=lambda x: ALL_PARAMETERS[x]
     )
 
