@@ -640,7 +640,7 @@ def main():
     )
     draw.add_to(m)
 
-    map_data = st_folium(m, width="100%", height=400)
+    map_data = st_folium(m, width=1540, height=450,use_container_width=True)
 
     if map_data and 'all_drawings' in map_data and map_data['all_drawings'] and len(map_data['all_drawings']) > 0:
         geometry = map_data['all_drawings'][-1]['geometry']
