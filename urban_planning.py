@@ -173,6 +173,10 @@ def analyze_topography(elevation_data):
 
     st.pyplot(fig)
 
+       # Calculate insights
+    avg_elevation = np.mean(elevation_data)
+    avg_slope = np.mean(slope)
+
     # Provide insights
     st.subheader("Topography Insights")
     st.write(f"Average Elevation: {np.mean(elevation_data):.2f} meters")
@@ -183,6 +187,18 @@ def analyze_topography(elevation_data):
     gentle = np.sum((slope >= 5) & (slope < 15)) / slope.size * 100
     moderate = np.sum((slope >= 15) & (slope < 30)) / slope.size * 100
     steep = np.sum(slope >= 30) / slope.size * 100
+
+        # Save data to session state
+    st.session_state['topography_analysis'] = {
+        'average_elevation': avg_elevation,
+        'average_slope': avg_slope,
+        'slope_classification': {
+            'flat': flat,
+            'gentle': gentle,
+            'moderate': moderate,
+            'steep': steep
+        }
+    }
 
     st.write("Slope Classification:")
     st.write(f"- Flat (0-5°): {flat:.2f}%")
@@ -244,7 +260,7 @@ def evaluate_land_suitability(nasa_data, elevation_data, weights=None, ideal_val
     
     return suitability_score
 
-def urban_planning_chatbot(nasa_data, elevation_data, user_input, coordinates):
+def urban_planning_chatbot(nasa_data, elevation_data, user_input, coordinates,topography_analysis):
     # Prepare a summary of the data for the chatbot
     avg_temp = nasa_data['T2M'].mean() if 'T2M' in nasa_data.columns else "N/A"
     avg_precip = nasa_data['PRECTOTCORR'].mean() if 'PRECTOTCORR' in nasa_data.columns else "N/A"
@@ -275,7 +291,7 @@ def urban_planning_chatbot(nasa_data, elevation_data, user_input, coordinates):
 
         Average Elevation: {avg_elevation:.2f} meters
         Slope characteristics: {slope_chars}
-
+        Topography Insights: {topography_analysis}
 
         Land Suitability Score: {land_suitability:.2f}/1.00
 
@@ -401,7 +417,7 @@ def create_chat_interface():
 
 def send_message(user_input):
     with st.spinner("AI is thinking..."):
-        ai_response = urban_planning_chatbot(st.session_state.nasa_data, st.session_state.elevation_data, user_input, st.session_state.coordinates)
+        ai_response = urban_planning_chatbot(st.session_state.nasa_data, st.session_state.elevation_data, user_input, st.session_state.coordinates,st.session_state['topography_analysis'])
     st.session_state.chat_history.insert(0,{"is_user": False, "content": ai_response})
     st.session_state.chat_history.insert(0,{"is_user": True, "content": user_input})
 
