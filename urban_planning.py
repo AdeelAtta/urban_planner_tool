@@ -253,11 +253,63 @@ def urban_planning_chatbot(nasa_data, elevation_data, user_input, coordinates):
     
     # Calculate centroid of the selected area
     lat, lon = calculate_centroid(coordinates)
-    
+
     # Prepare the conversation context
     conversation = [
-        {"role": "system", "content": "You are an AI urban planning assistant. You have access to climate and topographical data for a specific area, coordinates are also given.Act like a best Urban planner assistant & Provide insights and recommendations based on this data and urban planning best practices in very easy and to the point answers"},
-        {"role": "user", "content": f"Here's a summary of the area data:\nCoordinates: {coordinates} Lat {lat:.4f}, Lon {lon:.4f}\nAverage Temperature: {avg_temp:.2f}°C\nAverage Precipitation: {avg_precip:.2f} mm/day\nAverage Solar Radiation: {avg_solar:.2f} W/m^2\nAverage Elevation: {avg_elevation:.2f} meters\n\nBased on this data and location, {user_input}"}
+        {"role": "system", 
+         "content": """
+        I am an advanced AI urban planning assistant with expertise in sustainable development, climate-responsive design, and data-driven decision making. I have access to detailed climate and topographical data for a specific area. My role is to provide insightful, practical, and tailored urban planning recommendations based on this data and best practices in urban design.
+        Available Data:
+
+        Coordinates: {coordinates}
+        Lat {lat:.4f}, Lon {lon:.4f}
+        Climate Data:
+
+        Average Temperature: {avg_temp:.2f}°C
+        Average Precipitation: {avg_precip:.2f} mm/day
+        Average Solar Radiation: {avg_solar:.2f} W/m^2
+        {additional_climate_params}
+
+
+        Topographical Data:
+
+        Average Elevation: {avg_elevation:.2f} meters
+        Slope characteristics: {slope_chars}
+
+
+        Land Suitability Score: {land_suitability:.2f}/1.00
+
+        My Capabilities:
+
+        Analyze the provided data to assess the area's potential for various urban development projects.
+        Suggest sustainable urban planning strategies that align with the local climate and topography.
+        Provide recommendations on:
+
+        Optimal building designs and orientations.
+        facing of buildings for ventilations
+        Energy-efficient infrastructure
+        Water management systems
+        Green spaces and urban forestry
+        Transportation network planning
+        Climate change adaptation measures
+
+
+        Identify potential challenges or limitations based on the data and suggest mitigation strategies.
+        Offer insights on how to balance development needs with environmental conservation.
+
+        My Response Guidelines:
+
+        I structure my responses clearly, using headings or bullet points where appropriate.
+        I provide specific, actionable recommendations based on the data provided.
+        I explain the reasoning behind my suggestions, referencing the climate and topographical data.
+        When relevant, I mention any assumptions I'm making or additional data that would be helpful.
+        If asked about topics outside my expertise or data scope, I clearly state the limitations of my knowledge.
+        I encourage sustainable and resilient urban planning practices in all my recommendations.
+
+        My goal is to assist urban planners in making informed, data-driven decisions that promote sustainable and livable urban environments. I tailor my responses to the specific context provided in each query also gave specified Answer.
+        """
+         },
+        {"role": "user", "content": f"Here's a summary of the area data:\n Lat {lat:.4f}, Lon {lon:.4f}\nAverage Temperature: {avg_temp:.2f}°C\nAverage Precipitation: {avg_precip:.2f} mm/day\nAverage Solar Radiation: {avg_solar:.2f} W/m^2\nAverage Elevation: {avg_elevation:.2f} meters\n\nBased on this data and location, {user_input}"}
     ]
     
     try:
@@ -271,17 +323,87 @@ def urban_planning_chatbot(nasa_data, elevation_data, user_input, coordinates):
         return ai_message
     except Exception as e:
         return f"An error occurred: {str(e)}"
+    
 
-def send_message():
-    if st.session_state.user_input:
-        user_message = st.session_state.user_input
-        st.session_state.chat_history.append({"is_user": True, "content": user_message})
-        
-        with st.spinner("AI is thinking..."):
-            ai_response = urban_planning_chatbot(st.session_state.nasa_data, st.session_state.elevation_data, user_message, st.session_state.coordinates)
-        
-        st.session_state.chat_history.append({"is_user": False, "content": ai_response})
-        st.session_state.user_input = ""  # Clear the input box
+# def display_chat_history():
+#     st.markdown("### Chat History")
+#     if 'chat_history' in st.session_state and st.session_state.chat_history:
+#         for message in st.session_state.chat_history:
+#             if message['is_user']:
+#                 st.markdown(f"**You:** {message['content']}")
+#             else:
+#                 st.markdown(f"**AI:** {message['content']}")
+#     else:
+#         st.markdown("No conversation history yet.")
+
+def create_chat_interface():
+    # Chat input form
+    user_input = st.text_input("Enter your urban planning query...", key="user_input")
+    submit_button = st.button(label="Submit Query")
+
+    if submit_button and user_input:
+        send_message(user_input)
+
+    # Custom CSS for modern and minimalistic chat bubbles
+    st.markdown("""
+    <style>
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .chat-bubble {
+        padding: 12px 16px;
+        border-radius: 18px;
+        max-width: 80%;
+        line-height: 1.4;
+        font-size: 16px;
+    }
+    .user-bubble {
+        align-self: flex-start;
+        background-color: #f0f0f0;
+        color: #333;
+    }
+    .ai-bubble {
+        align-self: flex-start;
+        background-color: #e1f5fe;
+        color: #0277bd;
+    }
+    .message-container {
+        display: flex;
+        flex-direction: column;
+    }
+    .timestamp {
+        font-size: 12px;
+        color: #888;
+        margin-top: 4px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Display chat history
+    st.markdown("### Chat History")
+    if 'chat_history' in st.session_state and st.session_state.chat_history:
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        for message in st.session_state.chat_history:
+            bubble_class = "user-bubble" if message['is_user'] else "ai-bubble"
+            sender = "You" if message['is_user'] else "AI"
+            st.markdown(f"""
+            <div class="message-container" style="align-items: {'flex-end' if message['is_user'] else 'flex-start'}">
+                <div class="chat-bubble {bubble_class}">{message['content']}</div>
+                <div class="timestamp">{sender} • Just now</div>
+            </div>
+            """, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        st.markdown("No conversation history yet.")
+
+
+def send_message(user_input):
+    with st.spinner("AI is thinking..."):
+        ai_response = urban_planning_chatbot(st.session_state.nasa_data, st.session_state.elevation_data, user_input, st.session_state.coordinates)
+    st.session_state.chat_history.insert(0,{"is_user": False, "content": ai_response})
+    st.session_state.chat_history.insert(0,{"is_user": True, "content": user_input})
 
 def main():
     if 'chat_history' not in st.session_state:
@@ -337,7 +459,7 @@ def main():
             st.session_state.geometry = geometry
             st.success("Area selected. You can now analyze the data.")
             
-            if st.button("Analyze Selected Area"):
+            if st.button("Analyze Selected Area",key="selectedArea"):
                 coordinates = st.session_state.geometry['coordinates']
                 lat, lon = calculate_centroid(coordinates)
                 south, west = min(coord[1] for coord in coordinates[0]), min(coord[0] for coord in coordinates[0])
@@ -420,102 +542,10 @@ def main():
             st.metric("Average Land Suitability Score", f"{avg_suitability:.2f}/1.00")
 
         with tab4:
-            st.markdown("""
-                <style>
-                .chat-container {
-                    border: 1px solid #e0e0e0;
-                    border-radius: 10px;
-                    padding: 20px;
-                    margin-bottom: 20px;
-                    background-color: #f9f9f9;
-                    max-height: 500px;
-                    overflow-y: auto;
-                }
-                .chat-message {
-                    padding: 15px;
-                    margin-bottom: 15px;
-                    border-radius: 5px;
-                    font-family: 'Arial', sans-serif;
-                    font-size: 14px;
-                    line-height: 1.5;
-                    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-                }
-                .chat-message.user {
-                    background-color: #e8f5e9;
-                    border-left: 5px solid #4caf50;
-                    margin-left: 20px;
-                }
-                .chat-message.bot {
-                    background-color: #e3f2fd;
-                    border-left: 5px solid #2196f3;
-                    margin-right: 20px;
-                }
-                .chat-message .header {
-                    font-weight: bold;
-                    margin-bottom: 5px;
-                    font-size: 0.9em;
-                    color: #424242;
-                }
-                .chat-message .content {
-                    color: #212121;
-                }
-                .stTextInput > div > div > input {
-                    background-color: #fff;
-                    border: 1px solid #e0e0e0;
-                    border-radius: 5px;
-                    padding: 10px;
-                    font-size: 14px;
-                }
-                .stButton > button {
-                    background-color: #2196f3;
-                    color: white;
-                    font-weight: bold;
-                    border-radius: 5px;
-                    border: none;
-                    padding: 10px 20px;
-                    font-size: 14px;
-                }
-                .stButton > button:hover {
-                    background-color: #1976d2;
-                }
-                </style>
-            """, unsafe_allow_html=True)
-
             st.header("Urban Planning Assistant")
             st.markdown("Discuss your urban planning queries and receive expert advice.")
-
-            chat_container = st.container()
-            
-            with chat_container:
-                st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-                for message in st.session_state.chat_history:
-                    if message['is_user']:
-                        st.markdown(f"""
-                            <div class="chat-message user">
-                                <div class="header">Urban Planner</div>
-                                <div class="content">{message['content']}</div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"""
-                            <div class="chat-message bot">
-                                <div class="header">Planning Assistant</div>
-                                <div class="content">{message['content']}</div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-            
-            with st.form(key='chat_form'):
-                user_input = st.text_input("Enter your urban planning query...", key="user_input")
-                col1, col2, col3 = st.columns([3, 1, 1])
-                with col1:
-                    submit_button = st.form_submit_button(label="Submit Query", on_click=send_message)
-                
-                with col2:
-                    clear_button = st.form_submit_button(label="Clear Chat")
-                    if clear_button:
-                        st.session_state.chat_history = []
-                        
+            # display_chat_history()
+            create_chat_interface()
                                                 
     else:
         st.info("Please draw a polygon or rectangle on the map and click 'Analyze Selected Area' to see the results.")
