@@ -31,27 +31,27 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai.api_key = OPENAI_API_KEY
 
 # Define all available parameters
-ALL_PARAMETERS ={
-"T2M": "Temperature at 2 Meters (°C)",
-"T2M_MAX": "Maximum Temperature at 2 Meters (°C)",
-"T2M_MIN": "Minimum Temperature at 2 Meters (°C)",
-"PRECTOTCORR": "Precipitation Corrected (mm/day)",
-"RH2M": "Relative Humidity at 2 Meters (%)",
-"ALLSKY_SFC_SW_DWN": "All Sky Surface Shortwave Downward Irradiance (W/m^2)",
-"WS2M": "Wind Speed at 2 Meters (m/s)",
-"T2MDEW": "Dew/Frost Point at 2 Meters (°C)",
-"ALLSKY_SFC_LW_DWN": "All Sky Surface Longwave Downward Irradiance (W/m^2)",
-"CLOUD_AMT": "Cloud Amount (%)",
-"GWETROOT": "Root Zone Soil Wetness (%)",
-"QV2M": "Specific Humidity at 2 Meters (kg/kg)",
-"PS": "Surface Pressure (kPa)",
-"T2MWET": "Wet Bulb Temperature at 2 Meters (°C)",
-"ALLSKY_SFC_PAR_TOT": "All Sky Surface Photosynthetically Active Radiation (W/m^2)",
-"TOA_SW_DWN": "Top-Of-Atmosphere Shortwave Downward Irradiance (W/m^2)",
-"ALLSKY_SFC_SW_DNI": "All Sky Surface Shortwave Direct Normal Irradiance (W/m^2)",
-"ALLSKY_SRF_ALB": "All Sky Surface Albedo",
-"ALLSKY_SFC_SW_DIFF": "All Sky Surface Shortwave Diffuse Irradiance (W/m^2)",
-"ALLSKY_KT": "All Sky Insolation Clearness Index"
+ALL_PARAMETERS = {
+    "T2M": "🌡️ Average Temperature (°C) - Crucial for thermal comfort planning",
+    "T2M_MAX": "🔥 Maximum Temperature (°C) - Informs cooling system requirements",
+    "T2M_MIN": "❄️ Minimum Temperature (°C) - Guides heating infrastructure planning",
+    "PRECTOTCORR": "🌧️ Daily Precipitation (mm) - Essential for stormwater management and flood prevention",
+    "RH2M": "💧 Relative Humidity (%) - Impacts building material selection and HVAC planning",
+    "ALLSKY_SFC_SW_DWN": "☀️ Solar Radiation (W/m^2) - Crucial for solar energy potential and natural lighting design",
+    "WS2M": "💨 Wind Speed (m/s) - Influences building orientation and natural ventilation strategies",
+    "T2MDEW": "💦 Dew Point (°C) - Important for moisture control in building design",
+    "ALLSKY_SFC_LW_DWN": "🌞 Longwave Radiation (W/m^2) - Affects urban heat island mitigation strategies",
+    "CLOUD_AMT": "☁️ Cloud Cover (%) - Impacts solar energy efficiency and natural lighting design",
+    "GWETROOT": "🌱 Soil Moisture (%) - Crucial for green infrastructure and urban landscaping",
+    "QV2M": "💨 Specific Humidity (kg/kg) - Informs HVAC system design for moisture control",
+    "PS": "🏔️ Atmospheric Pressure (kPa) - Relevant for high-altitude urban planning",
+    "T2MWET": "💧 Wet Bulb Temperature (°C) - Critical for assessing heat stress in urban areas",
+    "ALLSKY_SFC_PAR_TOT": "🌿 Photosynthetically Active Radiation (W/m^2) - Important for urban agriculture and green space planning",
+    "TOA_SW_DWN": "🛰️ Top-of-Atmosphere Solar Radiation (W/m^2) - Useful for advanced solar energy planning",
+    "ALLSKY_SFC_SW_DNI": "🔆 Direct Normal Irradiance (W/m^2) - Critical for solar panel placement and efficiency",
+    "ALLSKY_SRF_ALB": "🔦 Surface Albedo - Guides urban heat island mitigation and energy-efficient building design",
+    "ALLSKY_SFC_SW_DIFF": "🌤️ Diffuse Solar Radiation (W/m^2) - Important for daylighting strategies in building design",
+    "ALLSKY_KT": "📊 Solar Clearness Index - Helps in assessing overall solar energy potential for the area"
 }
 
 @st.cache_data(ttl=3600)
@@ -436,7 +436,7 @@ def main():
     with col1:
         start_date = st.date_input("Start date", datetime.now() - timedelta(days=365))
     with col2:
-        end_date = st.date_input("End date", datetime.now())
+        end_date = st.date_input("End date", datetime.now()- timedelta(days=3))
 
     if start_date > end_date:
         st.sidebar.error("Error: End date must fall after start date.")
