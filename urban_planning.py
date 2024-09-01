@@ -500,8 +500,6 @@ def show_welcome_page():
         }
 
         .stButton>button:hover {
-            background-color: #1a2a6c;
-            color: #fdbb2d;
             transform: translateY(-2px);
             box-shadow: 0 6px 20px 0 rgba(252, 104, 110, 0.75);
         }
