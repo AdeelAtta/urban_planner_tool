@@ -31,22 +31,27 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai.api_key = OPENAI_API_KEY
 
 # Define all available parameters
-ALL_PARAMETERS = {
-    "T2M": "Temperature at 2 Meters (°C)",
-    "T2M_MAX": "Maximum Temperature at 2 Meters (°C)",
-    "T2M_MIN": "Minimum Temperature at 2 Meters (°C)",
-    "PRECTOTCORR": "Precipitation (mm/day)",
-    "RH2M": "Relative Humidity at 2 Meters (%)",
-    "ALLSKY_SFC_SW_DWN": "All Sky Surface Shortwave Downward Irradiance (W/m^2)",
-    "WS2M": "Wind Speed at 2 Meters (m/s)",
-    "T2MDEW": "Dew/Frost Point at 2 Meters (°C)",
-    "ALLSKY_SFC_LW_DWN": "All Sky Surface Longwave Downward Irradiance (W/m^2)",
-    "CLOUD_AMT": "Cloud Amount (%)",
-    "GWETROOT": "Root Zone Soil Wetness (%)",
-    "QV2M": "Specific Humidity at 2 Meters (kg/kg)",
-    "PS": "Surface Pressure (kPa)",
-    "T2MWET": "Wet Bulb Temperature at 2 Meters (°C)",
-    "ALLSKY_SFC_PAR_TOT": "All Sky Surface Photosynthetically Active Radiation (W/m^2)"
+ALL_PARAMETERS ={
+"T2M": "Temperature at 2 Meters (°C)",
+"T2M_MAX": "Maximum Temperature at 2 Meters (°C)",
+"T2M_MIN": "Minimum Temperature at 2 Meters (°C)",
+"PRECTOTCORR": "Precipitation Corrected (mm/day)",
+"RH2M": "Relative Humidity at 2 Meters (%)",
+"ALLSKY_SFC_SW_DWN": "All Sky Surface Shortwave Downward Irradiance (W/m^2)",
+"WS2M": "Wind Speed at 2 Meters (m/s)",
+"T2MDEW": "Dew/Frost Point at 2 Meters (°C)",
+"ALLSKY_SFC_LW_DWN": "All Sky Surface Longwave Downward Irradiance (W/m^2)",
+"CLOUD_AMT": "Cloud Amount (%)",
+"GWETROOT": "Root Zone Soil Wetness (%)",
+"QV2M": "Specific Humidity at 2 Meters (kg/kg)",
+"PS": "Surface Pressure (kPa)",
+"T2MWET": "Wet Bulb Temperature at 2 Meters (°C)",
+"ALLSKY_SFC_PAR_TOT": "All Sky Surface Photosynthetically Active Radiation (W/m^2)",
+"TOA_SW_DWN": "Top-Of-Atmosphere Shortwave Downward Irradiance (W/m^2)",
+"ALLSKY_SFC_SW_DNI": "All Sky Surface Shortwave Direct Normal Irradiance (W/m^2)",
+"ALLSKY_SRF_ALB": "All Sky Surface Albedo",
+"ALLSKY_SFC_SW_DIFF": "All Sky Surface Shortwave Diffuse Irradiance (W/m^2)",
+"ALLSKY_KT": "All Sky Insolation Clearness Index"
 }
 
 @st.cache_data(ttl=3600)
