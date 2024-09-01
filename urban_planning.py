@@ -426,6 +426,176 @@ def send_message(user_input):
     st.session_state.chat_history.insert(0,{"is_user": False, "content": ai_response})
     st.session_state.chat_history.insert(0,{"is_user": True, "content": user_input})
 
+
+# Function to display the welcome page
+def show_welcome_page():
+
+    st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .stApp {
+            background: linear-gradient(45deg, #1a2a6c, #b21f1f, #fdbb2d);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        @keyframes gradient {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .main {
+            background-color: rgba(255,255,255,0.9);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        h1 {
+            color: #1a2a6c;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            font-weight: 600;
+        }
+
+        h3 {
+            color: #b21f1f;
+            font-weight: 400;
+        }
+
+        p, li {
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .stButton>button {
+            background-color: #fdbb2d;
+            color: #1a2a6c;
+            border: none;
+            padding: 12px 24px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 4px 2px;
+            transition-duration: 0.3s;
+            cursor: pointer;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px 0 rgba(252, 104, 110, 0.75);
+        }
+
+        .stButton>button:hover {
+            background-color: #1a2a6c;
+            color: #fdbb2d;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px 0 rgba(252, 104, 110, 0.75);
+        }
+
+        /* Animated background shapes */
+        .bg-shapes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .bg-shapes li {
+            position: absolute;
+            display: block;
+            list-style: none;
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            animation: animate 25s linear infinite;
+            bottom: -150px;
+        }
+
+        .bg-shapes li:nth-child(1) {
+            left: 25%;
+            width: 80px;
+            height: 80px;
+            animation-delay: 0s;
+        }
+
+        .bg-shapes li:nth-child(2) {
+            left: 10%;
+            width: 20px;
+            height: 20px;
+            animation-delay: 2s;
+            animation-duration: 12s;
+        }
+
+        .bg-shapes li:nth-child(3) {
+            left: 70%;
+            width: 20px;
+            height: 20px;
+            animation-delay: 4s;
+        }
+
+        @keyframes animate {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+                border-radius: 0;
+            }
+            100% {
+                transform: translateY(-1000px) rotate(720deg);
+                opacity: 0;
+                border-radius: 50%;
+            }
+        }
+    </style>
+
+    <ul class="bg-shapes">
+        <li></li>
+        <li></li>
+        <li></li>
+    </ul>
+    """, unsafe_allow_html=True)
+
+
+    st.title("Welcome to the Urban Planning Map Tool")
+    
+    st.subheader("Overview")
+    st.write("""
+        This application is designed to assist urban planners in analyzing climate data, topography, and providing urban planning recommendations for specific areas within Pakistan.
+        
+        *Features:*
+        - Visualize climate data including temperature, precipitation, humidity, and more.
+        - Analyze topographical features such as elevation and slope.
+        - Generate urban planning recommendations based on the analyzed data.
+        - Project climate changes over future years.
+        
+        *Instructions:*
+        1. Use the sidebar to select a date range and choose the climate parameters you want to analyze.
+        2. On the map, draw a polygon or rectangle to select your area of interest.
+        3. Click 'Analyze Selected Area' to fetch and analyze the data.
+        4. Explore the visualizations and recommendations provided by the app.
+    """)
+    
+    if st.button("Start Using the App"):
+        st.session_state.welcome_done = True
+        main()
+
+
 def main():
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
@@ -572,4 +742,11 @@ def main():
         st.info("Please draw a polygon or rectangle on the map and click 'Analyze Selected Area' to see the results.")
 
 if __name__ == "__main__":
-    main()
+    if "welcome_done" not in st.session_state:
+        st.session_state.welcome_done = False
+
+    if st.session_state.welcome_done:
+        main()
+    else:
+        show_welcome_page()
+        
