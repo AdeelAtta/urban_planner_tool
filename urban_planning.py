@@ -432,166 +432,347 @@ def show_welcome_page():
 
     st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-        body {
-            font-family: 'Poppins', sans-serif;
+        /* Hide all default Streamlit UI elements (menu, header, footer, deploy button, status bar) */
+        #MainMenu {visibility: hidden !important; display: none !important;}
+        footer {visibility: hidden !important; display: none !important;}
+        header {visibility: hidden !important; display: none !important;}
+        [data-testid="stHeader"] {display: none !important;}
+        [data-testid="stToolbar"] {display: none !important;}
+        [data-testid="stDecoration"] {display: none !important;}
+        [data-testid="stStatusWidget"] {display: none !important;}
+        .stAppDeployButton {display: none !important;}
+
+        /* Safely restrict the app view viewport to 100vh max with zero scrolling on the welcome page */
+        .stApp, [data-testid="stAppViewContainer"], .main {
+            height: 100vh !important;
+            max-height: 100vh !important;
+            overflow: hidden !important;
         }
 
-        .stApp {
-            background: linear-gradient(45deg, #1a2a6c, #b21f1f, #fdbb2d);
-            background-size: 400% 400%;
-            animation: gradient 15s ease infinite;
+        /* Eliminate the excessive margins/padding on Streamlit's block container and center content */
+        .block-container, .stMainBlockContainer, [class*="stMainBlockContainer"] {
+            max-width: 1200px !important;
+            padding-top: 1rem !important;
+            padding-bottom: 1rem !important;
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
+            margin: 0 auto !important;
+            position: relative !important;
+            z-index: 2 !important;
         }
 
-        @keyframes gradient {
-            0% {
-                background-position: 0% 50%;
-            }
-            50% {
-                background-position: 100% 50%;
-            }
-            100% {
-                background-position: 0% 50%;
-            }
+        /* --- Self-Contained Premium Container --- */
+        .welcome-container {
+            background: linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%) !important;
+            color: #1E293B !important;
+            font-family: 'Inter', sans-serif !important;
+            padding: 2.2rem 2.5rem !important;
+            border-radius: 24px !important;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05), 
+                        0 1px 3px rgba(0, 0, 0, 0.01),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+            border: 1px solid rgba(226, 232, 240, 0.8) !important;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            height: 90vh !important; /* Set container height to exactly 90% of screen height */
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
         }
 
-        .main {
-            background-color: rgba(255,255,255,0.9);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+        /* --- Ambient Glowing Orbs for Depth --- */
+        .glow-orb-1 {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(37, 99, 235, 0.1) 0%, rgba(37, 99, 235, 0) 70%);
+            top: -50px;
+            right: -50px;
+            z-index: -1;
+            pointer-events: none;
+            filter: blur(40px);
         }
 
-        h1 {
-            color: #1a2a6c;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-            font-weight: 600;
+        .glow-orb-2 {
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle, rgba(124, 58, 237, 0.06) 0%, rgba(124, 58, 237, 0) 70%);
+            bottom: -80px;
+            left: -50px;
+            z-index: -1;
+            pointer-events: none;
+            filter: blur(50px);
         }
 
-        h3 {
-            color: #b21f1f;
+        /* --- Header Badge --- */
+        .welcome-badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(37, 99, 235, 0.06);
+            color: #2563EB;
+            padding: 5px 14px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid rgba(37, 99, 235, 0.15);
+            margin-bottom: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            box-shadow: 0 2px 10px rgba(37, 99, 235, 0.04);
+        }
+
+        /* --- Hero Title & Subtitle --- */
+        .hero-title {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            font-size: 42px;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.15;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.03em;
+        }
+
+        .hero-title span {
+            background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-text {
+            font-size: 15.5px;
+            color: #475569;
+            line-height: 1.65;
+            margin-bottom: 24px;
+            max-width: 780px;
             font-weight: 400;
         }
 
-        p, li {
-            color: #333;
-            line-height: 1.6;
+        /* --- Columns & Cards (True Glassmorphism) --- */
+        .feature-card {
+            background: rgba(255, 255, 255, 0.65) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.6) !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.8) !important;
+            border-radius: 18px;
+            padding: 24px;
+            height: 100%;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04), 
+                        0 1px 3px rgba(0, 0, 0, 0.01),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.5);
         }
 
-        .stButton>button {
-            background-color: #fdbb2d;
-            color: #1a2a6c;
-            border: none;
-            padding: 12px 24px;
+        .feature-card:hover {
+            transform: translateY(-5px) scale(1.01);
+            border-color: rgba(37, 99, 235, 0.25) !important;
+            background: rgba(255, 255, 255, 0.8) !important;
+            box-shadow: 0 20px 35px -8px rgba(37, 99, 235, 0.12), 
+                        0 0 25px rgba(37, 99, 235, 0.04);
+        }
+
+        .feature-icon {
+            font-size: 24px;
+            margin-bottom: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(124, 58, 237, 0.08) 100%);
+            border: 1px solid rgba(37, 99, 235, 0.12);
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8);
+        }
+
+        .feature-title {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            font-size: 18px;
+            font-weight: 700;
+            color: #0F172A;
+            margin-bottom: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        .feature-text {
+            color: #475569;
+            font-size: 13.5px;
+            line-height: 1.55;
+        }
+
+        /* --- Section Title --- */
+        .section-title {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            font-size: 19px;
+            font-weight: 700;
+            color: #0F172A;
             text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            font-weight: 600;
-            margin: 4px 2px;
-            transition-duration: 0.3s;
-            cursor: pointer;
-            border-radius: 50px;
-            box-shadow: 0 4px 15px 0 rgba(252, 104, 110, 0.75);
+            margin: 28px 0 16px 0;
+            letter-spacing: -0.015em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* --- Interactive Guide --- */
+        .workflow {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+
+        .workflow-step {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.5) !important;
+            backdrop-filter: blur(10px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.5) !important;
+            border-radius: 14px;
+            padding: 16px 14px;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+        }
+
+        .workflow-step:hover {
+            background: rgba(255, 255, 255, 0.75) !important;
+            border-color: rgba(37, 99, 235, 0.18) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.06);
+        }
+
+        .workflow-circle {
+            width: 32px;
+            height: 32px;
+            margin: 0 auto 10px auto;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
+            color: #FFFFFF;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 800;
+            font-size: 13px;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+        }
+
+        .workflow-title {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            font-size: 14px;
+            font-weight: 700;
+            color: #0F172A;
+            margin-bottom: 4px;
+        }
+
+        .workflow-subtitle {
+            color: #475569;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        /* --- Custom Start Button --- */
+        .stButton>button {
+            width: 100% !important;
+            height: 50px !important;
+            background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 12px !important;
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.02em !important;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            box-shadow: 0 8px 20px -3px rgba(37, 99, 235, 0.3) !important;
         }
 
         .stButton>button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px 0 rgba(252, 104, 110, 0.75);
-        }
-
-        /* Animated background shapes */
-        .bg-shapes {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            overflow: hidden;
-        }
-
-        .bg-shapes li {
-            position: absolute;
-            display: block;
-            list-style: none;
-            width: 20px;
-            height: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            animation: animate 25s linear infinite;
-            bottom: -150px;
-        }
-
-        .bg-shapes li:nth-child(1) {
-            left: 25%;
-            width: 80px;
-            height: 80px;
-            animation-delay: 0s;
-        }
-
-        .bg-shapes li:nth-child(2) {
-            left: 10%;
-            width: 20px;
-            height: 20px;
-            animation-delay: 2s;
-            animation-duration: 12s;
-        }
-
-        .bg-shapes li:nth-child(3) {
-            left: 70%;
-            width: 20px;
-            height: 20px;
-            animation-delay: 4s;
-        }
-
-        @keyframes animate {
-            0% {
-                transform: translateY(0) rotate(0deg);
-                opacity: 1;
-                border-radius: 0;
-            }
-            100% {
-                transform: translateY(-1000px) rotate(720deg);
-                opacity: 0;
-                border-radius: 50%;
-            }
+            transform: translateY(-2px) !important;
+            box-shadow: 0 15px 25px -5px rgba(37, 99, 235, 0.35), 0 0 25px rgba(124, 58, 237, 0.2) !important;
+            background: linear-gradient(135deg, #1D4ED8 0%, #6D28D9 100%) !important;
         }
     </style>
-
-    <ul class="bg-shapes">
-        <li></li>
-        <li></li>
-        <li></li>
-    </ul>
     """, unsafe_allow_html=True)
 
+    # Wrap the entire welcome content in the self-contained premium container
+    # st.markdown('<div class="welcome-container">', unsafe_allow_html=True)
+    st.markdown('<div class="glow-orb-1"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="glow-orb-2"></div>', unsafe_allow_html=True)
 
-    st.title("Welcome to the Urban Planning Map Tool")
-    
-    st.subheader("Overview")
-    st.write("""
-        This application is designed to assist urban planners in analyzing climate data, topography, and providing urban planning recommendations for specific areas within Pakistan.
-        
-        *Features:*
-        - Visualize climate data including temperature, precipitation, humidity, and more.
-        - Analyze topographical features such as elevation and slope.
-        - Generate urban planning recommendations based on the analyzed data.
-        - Project climate changes over future years.
-        
-        *Instructions:*
-        1. Use the sidebar to select a date range and choose the climate parameters you want to analyze.
-        2. On the map, draw a polygon or rectangle to select your area of interest.
-        3. Click 'Analyze Selected Area' to fetch and analyze the data.
-        4. Explore the visualizations and recommendations provided by the app.
-    """)
-    
-    if st.button("Start Using the App"):
-        st.session_state.welcome_done = True
-        main()
+    # ---------------- Hero ----------------
+
+    st.markdown("""
+    <div class="welcome-badge">🛰️ Next-Generation Urban Planning</div>
+    <div class="hero-title">
+        SmartTown: <span>Spatial Intelligence Platform</span>
+    </div>
+    <div class="hero-text">
+        Analyze meteorological patterns, evaluate high-resolution terrain gradients, and leverage customizable suitability matrices to guide sustainable regional growth across Pakistan.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ---------------- Feature Cards ----------------
+
+    c1, c2, c3 = st.columns(3, gap="large")
+
+    cards = [
+        ("🌦", "Climate Analytics", "Retrieve, filter, and map 20+ atmospheric parameters including temperature, precipitation, and solar irradiance via NASA POWER satellites."),
+        ("⛰", "Terrain & Elevation", "Generate elevation gradients, slope classifications, aspect ratios, and immersive 3D terrain projections from SRTM datasets."),
+        ("🤖", "AI Planning Assistant", "Formulate localized development strategies, optimal orientations, and climate adaptation guidelines using the GPT-powered chat.")
+    ]
+
+    for col, (icon, title, text) in zip((c1, c2, c3), cards):
+        with col:
+            st.markdown(f"""
+            <div class="feature-card">
+                <div class="feature-icon">{icon}</div>
+                <div class="feature-title">{title}</div>
+                <div class="feature-text">{text}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # ---------------- How It Works ----------------
+
+    st.markdown(
+        '<div class="section-title">Platform Guide</div>',
+        unsafe_allow_html=True
+    )
+
+    steps = [
+        ("1", "Parameters", "Configure variables and select the temporal range on the sidebar panel."),
+        ("2", "Select Region", "Navigate and draw a target polygon or rectangle boundaries directly on the map."),
+        ("3", "Run Diagnostics", "Execute real-time spatial retrievals to process climate and terrain databases."),
+        ("4", "Actionable Insight", "Explore suitability heatmaps, charts, and consult the AI Planner for strategies.")
+    ]
+
+    sc1, sc2, sc3, sc4 = st.columns(4)
+    for col, (num, title, subtitle) in zip((sc1, sc2, sc3, sc4), steps):
+        with col:
+            st.markdown(f"""
+            <div class="workflow-step">
+                <div class="workflow-circle">{num}</div>
+                <div class="workflow-title">{title}</div>
+                <div class="workflow-subtitle">{subtitle}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.write("")
+
+    # ---------------- CTA ----------------
+
+    _, center, _ = st.columns([1.8, 1.4, 1.8])
+    with center:
+        if st.button("let's Start", use_container_width=True):
+            st.session_state.welcome_done = True
+            st.rerun()
+
+    # Close the premium self-contained container wrapper
+    # st.markdown('</div>', unsafe_allow_html=True)
 
 
 def main():
